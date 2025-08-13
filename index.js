@@ -1,6 +1,7 @@
 const express = require('express')
 const path = require('path')
 const cool = require('cool-ascii-faces')
+require('dotenv').config();
 
 const port = process.env.PORT || 5006
 
@@ -9,6 +10,15 @@ const app = express()
 app.use(express.static(path.join(__dirname, 'public')))
 app.set('views', path.join(__dirname, 'views'))
 app.set('view engine', 'ejs')
+
+const { Pool } = require('pg')
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+})
 
 app.get('/', (req, res) => {
   console.log(`Rendering 'pages/index' for route '/'`)
@@ -28,6 +38,21 @@ app.get('/times', (req, res) => {
     result += i + ' '
   }
   res.send(result)
+})
+
+app.get('/db', async (req, res) => {
+  console.log(`Rendering the results of a database query for route '/db'`)
+  try {
+    const client = await pool.connect()
+    const result = await client.query('SELECT * FROM test_table')
+    res.render('pages/db', {
+      results: result ? result.rows : null
+    })
+    client.release()
+  } catch (err) {
+    console.error(err);
+    res.send("Error " + err);
+  }
 })
 
 const server = app.listen(port, () => {
